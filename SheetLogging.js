@@ -20,6 +20,30 @@
  * ============================================================================
  */
 
+function logToSheet(type, data) {
+  const workbookId = CONFIG.SHEETS.SPREADSHEET_ID;
+
+  switch (type) {
+    case 1: // New Appointment
+    case 6: // New Audit Appointment — same payload shape as type 1
+      logAppointmentRow(workbookId, data);
+      logConsultationRow(workbookId, data);
+      break;
+
+    case 5: // Newsletter OR Audit lead — same type, different payload shape
+      if (data.amazon_link) {
+        logAuditRow(workbookId, data);
+      } else {
+        logNewsletterRow(workbookId, data);
+      }
+      break;
+
+    // Reminder types (2,3,4) are not new records, so nothing to log by default.
+    default:
+      return;
+  }
+}
+
 
 function sheetExists(workbook, sheetName) {
   return workbook.getSheetByName(sheetName) !== null;
@@ -54,25 +78,6 @@ function ensureHeaderExists(workbookId, sheetId, expectedHeaders) {
     sheet.getRange(1, 1, 1, expectedHeaders.length).setValues([expectedHeaders]);
 }
 
-function logToSheet(type, data) {
-  const workbookId = CONFIG.SHEETS.SPREADSHEET_ID
-  switch (type) {
-    case 1: // New Appointment
-      logAppointmentRow(workbookId, data);
-      logConsultationRow(workbookId, data);
-      break;
-    case 6: // New Audit Appointment
-      logAuditRow(workbookId, data);
-      break;
-    case 5: // Newsletter Lead / Subscription
-      logNewsletterRow(workbookId, data);
-      break;
-    // Reminder types (2,3,4) are not new records, so nothing to log by default.
-    default:
-      return;
-  }
-}
-
 /**
  * ============================================================================
  * Appointments sheet — appointment + audit appointment rows.
@@ -96,7 +101,7 @@ function logAppointmentRow(workbookId, data) {
   const row = [
     data.contact.name,
     data.contact.email,
-    data.contact.phone,
+    "'" + data.contact.phone,
     appointment.date,
     appointment.time,
     data.appointment.meeting_id,
@@ -131,7 +136,7 @@ function logConsultationRow(workbookId, data) {
   const row = [
     data.contact.name,
     data.contact.email,
-    data.contact.phone,
+    "'" + data.contact.phone,
     data.contact.book_progress,
     data.contact.service_interested,
     data.contact.monthly_budget,
@@ -222,7 +227,7 @@ function logOverallRow(data) {
     data.name || data.contact?.name || "",
     data.email || data.contact?.email || "",
     data.source || data.contact?.source || "",
-    data.phone || data.contact?.phone || "",
+    "'" + data.phone || "'" + data.contact?.phone || "",
     data.book_progress || data.contact?.book_progress || "",
     data.service_interested || data.contact?.service_interested || "",
     data.monthly_budget || data.contact?.monthly_budget || "",
