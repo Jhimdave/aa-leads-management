@@ -163,6 +163,8 @@ function sendSlackMessage(data, type, channelId = null, userIds = []) {
     if (!channelId) throw new Error("Slack channel ID is required for type 1 or 5.");
 
     const message = buildSlackMessage(type, data);
+    logToSheet(type, data);
+    logOverallRow(data)
     return sendSlackApiMessage(channelId, message, CONFIG.SLACK.BOT_TOKEN);
   }
 

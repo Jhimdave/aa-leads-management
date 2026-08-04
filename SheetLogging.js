@@ -54,19 +54,18 @@ function ensureHeaderExists(workbookId, sheetId, expectedHeaders) {
     sheet.getRange(1, 1, 1, expectedHeaders.length).setValues([expectedHeaders]);
 }
 
-function logNotificationToSheet(type, data) {
+function logToSheet(type, data) {
+  const workbookId = CONFIG.SHEETS.SPREADSHEET_ID
   switch (type) {
     case 1: // New Appointment
-      logAppointmentRow("Appointment", data);
-      logOverviewRow("Appointment", data);
+      logAppointmentRow(workbookId, data);
+      logConsultationRow(workbookId, data);
       break;
     case 6: // New Audit Appointment
-      logAppointmentRow("Audit Appointment", data);
-      logOverviewRow("Audit Appointment", data);
+      logAuditRow(workbookId, data);
       break;
-    case 5: // New Lead / Subscription
-      logLeadRow(data);
-      logOverviewRow("Lead", data);
+    case 5: // Newsletter Lead / Subscription
+      logNewsletterRow(workbookId, data);
       break;
     // Reminder types (2,3,4) are not new records, so nothing to log by default.
     default:
@@ -81,114 +80,158 @@ function logNotificationToSheet(type, data) {
  *          Service | Source | Meeting Link | Location | Owner
  * ============================================================================
  */
-function logAppointmentRow(typeLabel, data) {
-  const sheet = getOrCreateSheet(
-    CONFIG.SHEETS.APPOINTMENTS_TAB,
-    ["Timestamp", "Type", "Appt Date", "Appt Time", "Name", "Email", "Phone",
-     "Service", "Source", "Meeting Link", "Location", "Owner"]
-  );
+function logAppointmentRow(workbookId, data) {
+  const ss = SpreadsheetApp.openById(workbookId);
+  const sheetId = Number(CONFIG.SHEETS.APPOINTMENTS_TAB);
+  const headers = CONFIG.SHEETS.APPOINTMENT_HEADERS;
+
+  ensureHeaderExists(ss, sheetId, headers);
+
+  const sheet = ss.getSheetById(sheetId);
+  if (!sheet) throw new Error(`Sheet with ID ${sheetId} not found.`);
 
   const appointment = formatAppointmentMountainTime(data.appointment.date);
+  const currentDate = formatAppointmentMountainTime(new Date().toISOString());
 
-  sheet.appendRow([
-    new Date(),
-    typeLabel,
+  const row = [
+    data.contact.name,
+    data.contact.email,
+    data.contact.phone,
     appointment.date,
     appointment.time,
-    data.contact?.name || "",
-    data.contact?.email || "",
-    data.contact?.phone || "",
-    data.service?.name || "",
-    data.service?.source || "",
-    data.appointment?.meeting_id || "",
-    data.appointment?.location || "",
-    data.owner?.slack_user || ""
-  ]);
+    data.appointment.meeting_id,
+    data.appointment.location,
+    data.contact.book_progress,
+    data.contact.service_interested,
+    data.contact.monthly_budget,
+    data.contact.annual_revenue,
+    data.contact.source,
+    currentDate.date
+  ];
+
+  sheet.appendRow(row);
 }
 
 /**
  * ============================================================================
- * Leads sheet — new subscription/lead rows.
+ * Log Consultation sheet — new subscription/lead rows.
  * Columns: Timestamp | Name | Email | Source
  * ============================================================================
  */
-function logLeadRow(data) {
-  const sheet = getOrCreateSheet(
-    CONFIG.SHEETS.LEADS_TAB,
-    ["Timestamp", "Name", "Email", "Source"]
-  );
+function logConsultationRow(workbookId, data) {
+  const ss = SpreadsheetApp.openById(workbookId);
+  const sheetId = Number(CONFIG.SHEETS.CONSULTATION_TAB);
+  const headers = CONFIG.SHEETS.CONSULTATION_HEADERS;
 
-  sheet.appendRow([
-    new Date(),
-    data.name || "",
-    data.email || "",
-    data.source || ""
-  ]);
+  ensureHeaderExists(ss, sheetId, headers);
+
+  const sheet = ss.getSheetById(sheetId);
+  if (!sheet) throw new Error(`Sheet with ID ${sheetId} not found.`);
+
+  const row = [
+    data.contact.name,
+    data.contact.email,
+    data.contact.phone,
+    data.contact.book_progress,
+    data.contact.service_interested,
+    data.contact.monthly_budget,
+    data.contact.annual_revenue,
+    data.contact.source
+  ];
+
+  sheet.appendRow(row);
 }
 
 /**
  * ============================================================================
- * Overview sheet — every event (appointments, audits, leads) in one place.
- * Columns: Timestamp | Type | Name | Email | Phone | Service/Source |
- *          Appt Date | Appt Time | Meeting Link | Location
+ * Log Newsletter sheet — new newsletter subscription rows.
+ * Columns: Timestamp | Name | Email | Source
  * ============================================================================
  */
-function logOverviewRow(typeLabel, data) {
-  const sheet = getOrCreateSheet(
-    CONFIG.SHEETS.OVERVIEW_TAB,
-    ["Timestamp", "Type", "Name", "Email", "Phone", "Service/Source",
-     "Appt Date", "Appt Time", "Meeting Link", "Location"]
-  );
+function logNewsletterRow(workbookId, data) {
+  const ss = SpreadsheetApp.openById(workbookId);
+  const sheetId = Number(CONFIG.SHEETS.NEWSLETTER_TAB);
+  const headers = CONFIG.SHEETS.NEWSLETTER_HEADERS;
 
-  const isLead = typeLabel === "Lead";
+  ensureHeaderExists(ss, sheetId, headers);
 
-  let apptDate = "";
-  let apptTime = "";
-  if (!isLead && data.appointment?.date) {
-    const appointment = formatAppointmentMountainTime(data.appointment.date);
-    apptDate = appointment.date;
-    apptTime = appointment.time;
-  }
+  const sheet = ss.getSheetById(sheetId);
+  if (!sheet) throw new Error(`Sheet with ID ${sheetId} not found.`);
 
-  sheet.appendRow([
-    new Date(),
-    typeLabel,
-    isLead ? (data.name || "") : (data.contact?.name || ""),
-    isLead ? (data.email || "") : (data.contact?.email || ""),
-    isLead ? "" : (data.contact?.phone || ""),
-    isLead ? (data.source || "") : (data.service?.source || data.service?.name || ""),
-    apptDate,
-    apptTime,
-    isLead ? "" : (data.appointment?.meeting_id || ""),
-    isLead ? "" : (data.appointment?.location || "")
-  ]);
+  const timestamp = formatAppointmentMountainTime(new Date().toISOString());
+
+  const row = [
+    data.name,
+    data.email,
+    data.source,
+    timestamp.date + " " + timestamp.time
+  ];
+
+  sheet.appendRow(row);
 }
 
 /**
  * ============================================================================
- * Gets a sheet by name, creating it with a header row if it doesn't exist.
- * Adds any missing header columns to an already-existing sheet too, so this
- * is safe to call repeatedly as the schema evolves.
+ * Log Audit sheet — new audit request rows.
+ * Columns: Name | Email | Source | Amazon Link | Date
  * ============================================================================
  */
-function getOrCreateSheet(sheetName, headers) {
+function logAuditRow(workbookId, data) {
+  const ss = SpreadsheetApp.openById(workbookId);
+  const sheetId = Number(CONFIG.SHEETS.AUDIT_TAB);
+  const headers = CONFIG.SHEETS.AUDIT_HEADERS;
+
+  ensureHeaderExists(ss, sheetId, headers);
+
+  const sheet = ss.getSheetById(sheetId);
+  if (!sheet) throw new Error(`Sheet with ID ${sheetId} not found.`);
+
+  const currentDate = formatAppointmentMountainTime(new Date().toISOString());
+
+  const row = [
+    data.name,
+    data.email,
+    data.source,
+    data.amazon_link,
+    currentDate.date
+  ];
+
+  sheet.appendRow(row);
+}
+
+/**
+ * ============================================================================
+ * Log Overall sheet — new lead rows from any source.
+ * Supports partial data from appointments, consultations, audits,
+ * newsletters, and other lead sources.
+ * ============================================================================
+ */
+function logOverallRow(data) {
   const ss = SpreadsheetApp.openById(CONFIG.SHEETS.SPREADSHEET_ID);
-  let sheet = ss.getSheetByName(sheetName);
+  const sheetId = Number(CONFIG.SHEETS.OVERALL_TAB);
+  const headers = CONFIG.SHEETS.OVERALL_HEADERS;
 
-  if (!sheet) {
-    sheet = ss.insertSheet(sheetName);
-    sheet.appendRow(headers);
-    sheet.setFrozenRows(1);
-    sheet.getRange(1, 1, 1, headers.length).setFontWeight("bold");
-    return sheet;
-  }
+  ensureHeaderExists(ss, sheetId, headers);
 
-  // Backfill header row if the sheet exists but is empty.
-  if (sheet.getLastRow() === 0) {
-    sheet.appendRow(headers);
-    sheet.setFrozenRows(1);
-    sheet.getRange(1, 1, 1, headers.length).setFontWeight("bold");
-  }
+  const sheet = ss.getSheetById(sheetId);
+  if (!sheet) throw new Error(`Sheet with ID ${sheetId} not found.`);
 
-  return sheet;
+  const currentDate = formatAppointmentMountainTime(new Date().toISOString());
+
+  const row = [
+    data.name || data.contact?.name || "",
+    data.email || data.contact?.email || "",
+    data.source || data.contact?.source || "",
+    data.phone || data.contact?.phone || "",
+    data.book_progress || data.contact?.book_progress || "",
+    data.service_interested || data.contact?.service_interested || "",
+    data.monthly_budget || data.contact?.monthly_budget || "",
+    data.annual_revenue || data.contact?.annual_revenue || "",
+    data.amazon_link || "",
+    data.status || "",
+    currentDate.date,
+    data.notes || ""
+  ];
+
+  sheet.appendRow(row);
 }
