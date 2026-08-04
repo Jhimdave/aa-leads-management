@@ -1,49 +1,22 @@
 /**
  * ============================================================================
- * CONFIG additions needed (merge into your existing CONFIG object):
- * ============================================================================
- *
- * CONFIG.SHEETS = {
- *   SPREADSHEET_ID: "YOUR_SPREADSHEET_ID_HERE", // the sheet these all live in
- *   APPOINTMENTS_TAB: "Appointments",
- *   LEADS_TAB: "Leads",
- *   OVERVIEW_TAB: "Overview"
- * };
- */
-
-/**
- * ============================================================================
- * Logs a notification event to the appropriate Google Sheet(s).
- * Call this alongside sendSlackMessage — e.g. from wherever the notification
- * type is first decided, or right inside sendSlackMessage before building
- * the Slack text.
+ * Sanitizers — prevent literal "null"/"undefined" text or bad phone
+ * concatenation from landing in sheet cells.
  * ============================================================================
  */
-
-function logToSheet(type, data) {
-  const workbookId = CONFIG.SHEETS.SPREADSHEET_ID;
-
-  switch (type) {
-    case 1: // New Appointment
-    case 6: // New Audit Appointment — same payload shape as type 1
-      logAppointmentRow(workbookId, data);
-      logConsultationRow(workbookId, data);
-      break;
-
-    case 5: // Newsletter OR Audit lead — same type, different payload shape
-      if (data.amazon_link) {
-        logAuditRow(workbookId, data);
-      } else {
-        logNewsletterRow(workbookId, data);
-      }
-      break;
-
-    // Reminder types (2,3,4) are not new records, so nothing to log by default.
-    default:
-      return;
-  }
+function clean(value) {
+  if (value === null || value === undefined) return "";
+  const str = String(value).trim();
+  if (str === "" || str.toLowerCase() === "null" || str.toLowerCase() === "undefined") return "";
+  return str;
 }
 
+// Keeps the leading apostrophe (forces text format so phone numbers/+ signs
+// don't get mangled by Sheets) but only when there's an actual value.
+function phoneCell(value) {
+  const v = clean(value);
+  return v ? "'" + v : "";
+}
 
 function sheetExists(workbook, sheetName) {
   return workbook.getSheetByName(sheetName) !== null;
@@ -62,16 +35,13 @@ function ensureHeaderExists(workbookId, sheetId, expectedHeaders) {
   const sheet = SpreadsheetApp.openById(workbookId).getSheetById(Number(sheetId));
   if (!sheet) throw new Error(`Sheet ID ${sheetId} not found.`);
 
-  // Ensure enough columns exist
   if (sheet.getMaxColumns() < expectedHeaders.length)
     sheet.insertColumnsAfter(sheet.getMaxColumns(), expectedHeaders.length - sheet.getMaxColumns());
 
-  // Ensure at least one row exists
   if (sheet.getMaxRows() === 0)
     sheet.insertRowBefore(1);
 
   const currentHeaders = sheet.getRange(1, 1, 1, expectedHeaders.length).getValues()[0];
-
   const hasHeaders = expectedHeaders.every((header, i) => currentHeaders[i] === header);
 
   if (!hasHeaders)
@@ -80,9 +50,37 @@ function ensureHeaderExists(workbookId, sheetId, expectedHeaders) {
 
 /**
  * ============================================================================
- * Appointments sheet — appointment + audit appointment rows.
- * Columns: Timestamp | Type | Appt Date | Appt Time | Name | Email | Phone |
- *          Service | Source | Meeting Link | Location | Owner
+ * Type routing — 6 is an appointment payload (same shape as 1), and 5
+ * covers two different lead shapes (newsletter vs audit), told apart by
+ * the presence of amazon_link.
+ * ============================================================================
+ */
+function logToSheet(type, data) {
+  const workbookId = CONFIG.SHEETS.SPREADSHEET_ID;
+
+  switch (type) {
+    case 1: // New Appointment
+    case 6: // New Audit Appointment — same payload shape as type 1
+      logAppointmentRow(workbookId, data);
+      logConsultationRow(workbookId, data);
+      break;
+
+    case 5: // Newsletter OR Audit lead — same type, different payload shape
+      if (data.amazon_link) {
+        logAuditRow(workbookId, data);
+      } else {
+        logNewsletterRow(workbookId, data);
+      }
+      break;
+
+    default:
+      return;
+  }
+}
+
+/**
+ * ============================================================================
+ * Appointments sheet
  * ============================================================================
  */
 function logAppointmentRow(workbookId, data) {
@@ -99,18 +97,18 @@ function logAppointmentRow(workbookId, data) {
   const currentDate = formatAppointmentMountainTime(new Date().toISOString());
 
   const row = [
-    data.contact.name,
-    data.contact.email,
-    "'" + data.contact.phone,
+    clean(data.contact.name),
+    clean(data.contact.email),
+    phoneCell(data.contact.phone),
     appointment.date,
     appointment.time,
-    data.appointment.meeting_id,
-    data.appointment.location,
-    data.contact.book_progress,
-    data.contact.service_interested,
-    data.contact.monthly_budget,
-    data.contact.annual_revenue,
-    data.contact.source,
+    clean(data.appointment.meeting_id),
+    clean(data.appointment.location),
+    clean(data.contact.book_progress),
+    clean(data.contact.service_interested),
+    clean(data.contact.monthly_budget),
+    clean(data.contact.annual_revenue),
+    clean(data.contact.source),
     currentDate.date
   ];
 
@@ -119,8 +117,7 @@ function logAppointmentRow(workbookId, data) {
 
 /**
  * ============================================================================
- * Log Consultation sheet — new subscription/lead rows.
- * Columns: Timestamp | Name | Email | Source
+ * Consultation sheet
  * ============================================================================
  */
 function logConsultationRow(workbookId, data) {
@@ -134,14 +131,14 @@ function logConsultationRow(workbookId, data) {
   if (!sheet) throw new Error(`Sheet with ID ${sheetId} not found.`);
 
   const row = [
-    data.contact.name,
-    data.contact.email,
-    "'" + data.contact.phone,
-    data.contact.book_progress,
-    data.contact.service_interested,
-    data.contact.monthly_budget,
-    data.contact.annual_revenue,
-    data.contact.source
+    clean(data.contact.name),
+    clean(data.contact.email),
+    phoneCell(data.contact.phone),
+    clean(data.contact.book_progress),
+    clean(data.contact.service_interested),
+    clean(data.contact.monthly_budget),
+    clean(data.contact.annual_revenue),
+    clean(data.contact.source)
   ];
 
   sheet.appendRow(row);
@@ -149,8 +146,7 @@ function logConsultationRow(workbookId, data) {
 
 /**
  * ============================================================================
- * Log Newsletter sheet — new newsletter subscription rows.
- * Columns: Timestamp | Name | Email | Source
+ * Newsletter sheet
  * ============================================================================
  */
 function logNewsletterRow(workbookId, data) {
@@ -166,9 +162,9 @@ function logNewsletterRow(workbookId, data) {
   const timestamp = formatAppointmentMountainTime(new Date().toISOString());
 
   const row = [
-    data.name,
-    data.email,
-    data.source,
+    clean(data.name),
+    clean(data.email),
+    clean(data.source),
     timestamp.date + " " + timestamp.time
   ];
 
@@ -177,8 +173,7 @@ function logNewsletterRow(workbookId, data) {
 
 /**
  * ============================================================================
- * Log Audit sheet — new audit request rows.
- * Columns: Name | Email | Source | Amazon Link | Date
+ * Audit sheet
  * ============================================================================
  */
 function logAuditRow(workbookId, data) {
@@ -194,10 +189,10 @@ function logAuditRow(workbookId, data) {
   const currentDate = formatAppointmentMountainTime(new Date().toISOString());
 
   const row = [
-    data.name,
-    data.email,
-    data.source,
-    data.amazon_link,
+    clean(data.name),
+    clean(data.email),
+    clean(data.source),
+    clean(data.amazon_link),
     currentDate.date
   ];
 
@@ -206,9 +201,8 @@ function logAuditRow(workbookId, data) {
 
 /**
  * ============================================================================
- * Log Overall sheet — new lead rows from any source.
- * Supports partial data from appointments, consultations, audits,
- * newsletters, and other lead sources.
+ * Overall sheet — the "'" + data.phone precedence bug is fixed here via
+ * phoneCell(), and every field is run through clean().
  * ============================================================================
  */
 function logOverallRow(data) {
@@ -224,18 +218,18 @@ function logOverallRow(data) {
   const currentDate = formatAppointmentMountainTime(new Date().toISOString());
 
   const row = [
-    data.name || data.contact?.name || "",
-    data.email || data.contact?.email || "",
-    data.source || data.contact?.source || "",
-    "'" + data.phone || "'" + data.contact?.phone || "",
-    data.book_progress || data.contact?.book_progress || "",
-    data.service_interested || data.contact?.service_interested || "",
-    data.monthly_budget || data.contact?.monthly_budget || "",
-    data.annual_revenue || data.contact?.annual_revenue || "",
-    data.amazon_link || "",
-    data.status || "",
+    clean(data.name || data.contact?.name),
+    clean(data.email || data.contact?.email),
+    clean(data.source || data.contact?.source),
+    phoneCell(data.phone || data.contact?.phone),
+    clean(data.book_progress || data.contact?.book_progress),
+    clean(data.service_interested || data.contact?.service_interested),
+    clean(data.monthly_budget || data.contact?.monthly_budget),
+    clean(data.annual_revenue || data.contact?.annual_revenue),
+    clean(data.amazon_link),
+    clean(data.contact.status) || "New Lead",
     currentDate.date,
-    data.notes || ""
+    clean(data.notes)
   ];
 
   sheet.appendRow(row);
