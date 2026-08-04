@@ -85,7 +85,7 @@ function logAppointmentRow(workbookId, data) {
   const sheetId = Number(CONFIG.SHEETS.APPOINTMENTS_TAB);
   const headers = CONFIG.SHEETS.APPOINTMENT_HEADERS;
 
-  ensureHeaderExists(ss, sheetId, headers);
+  ensureHeaderExists(workbookId, sheetId, headers);
 
   const sheet = ss.getSheetById(sheetId);
   if (!sheet) throw new Error(`Sheet with ID ${sheetId} not found.`);
@@ -123,7 +123,7 @@ function logConsultationRow(workbookId, data) {
   const sheetId = Number(CONFIG.SHEETS.CONSULTATION_TAB);
   const headers = CONFIG.SHEETS.CONSULTATION_HEADERS;
 
-  ensureHeaderExists(ss, sheetId, headers);
+  ensureHeaderExists(workbookId, sheetId, headers);
 
   const sheet = ss.getSheetById(sheetId);
   if (!sheet) throw new Error(`Sheet with ID ${sheetId} not found.`);
@@ -153,7 +153,7 @@ function logNewsletterRow(workbookId, data) {
   const sheetId = Number(CONFIG.SHEETS.NEWSLETTER_TAB);
   const headers = CONFIG.SHEETS.NEWSLETTER_HEADERS;
 
-  ensureHeaderExists(ss, sheetId, headers);
+  ensureHeaderExists(workbookId, sheetId, headers);
 
   const sheet = ss.getSheetById(sheetId);
   if (!sheet) throw new Error(`Sheet with ID ${sheetId} not found.`);
@@ -181,7 +181,7 @@ function logAuditRow(workbookId, data) {
   const sheetId = Number(CONFIG.SHEETS.AUDIT_TAB);
   const headers = CONFIG.SHEETS.AUDIT_HEADERS;
 
-  ensureHeaderExists(ss, sheetId, headers);
+  ensureHeaderExists(workbookId, sheetId, headers);
 
   const sheet = ss.getSheetById(sheetId);
   if (!sheet) throw new Error(`Sheet with ID ${sheetId} not found.`);
@@ -211,7 +211,7 @@ function logOverallRow(data) {
   const sheetId = Number(CONFIG.SHEETS.OVERALL_TAB);
   const headers = CONFIG.SHEETS.OVERALL_HEADERS;
 
-  ensureHeaderExists(ss, sheetId, headers);
+  ensureHeaderExists(CONFIG.SHEETS.SPREADSHEET_ID, sheetId, headers);
 
   const sheet = ss.getSheetById(sheetId);
   if (!sheet) throw new Error(`Sheet with ID ${sheetId} not found.`);
