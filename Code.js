@@ -38,6 +38,18 @@ function doPost(e) {
         sendSlackMessage(request, notif, channelId);
         break;
 
+      case 7:
+        sendSlackMessage(request, notif, channelId);
+        break;
+
+      case 8:
+        sendSlackMessage(request, notif, channelId);
+        break;
+
+      case 9:
+        sendSlackMessage(request, notif, null, [melissa]);
+        break;
+
       default:
         throw new Error(`Invalid notification type: ${notif}`);
     }

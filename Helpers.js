@@ -11,6 +11,9 @@ function buildSlackMessage(type, data, priorityUserId = null) {
     case 4: return fiveMinuteReminder(data, priorityUserId);
     case 5: return newSubscription(data, priorityUserId);
     case 6: return newAuditAppointment(data);
+    case 7: return newSABAppointment(data);
+    case 8: return rescheduledAppointment(data);
+    case 9: return cancelledAppointmentDM(data);
     default: throw new Error(`Unknown notification type: ${type}`);
   }
 }
@@ -23,19 +26,69 @@ function buildSlackMessage(type, data, priorityUserId = null) {
 function newAppointment(data) {
   const appointment = formatAppointmentMountainTime(data.appointment.date);
 
-  return `Hi <@${data.owner.slack_user}>, <@${CONFIG.SLACK.ALEX_ID}>, <@${CONFIG.SLACK.DANIEL_ID}> :wave:
+  return `Hi <@${data.owner.slack_user}>, <@${CONFIG.SLACK.ALEX_ID}>, <@${CONFIG.SLACK.DANIEL_ID}> 👋
 
-:calendar: *New Appointment Booked!*
+\`\`\`
+📅 NEW APPOINTMENT BOOKED
 
-\t• Appointment: ${appointment.date} (MDT)
-\t• Time: ${appointment.time}
-\t• Name: ${data.contact.name}
-\t• Email: ${data.contact.email}
-\t• Phone: ${data.contact.phone}
-\t• Service: ${data.service.name}
-\t• Source: ${data.service.source}
-\t• Meeting Link: ${data.appointment.meeting_id}
-\t• Location: ${data.appointment.location}`;
+Appointment : ${appointment.date} (MDT)
+Time        : ${appointment.time}
+Name        : ${data.contact.name}
+Email       : ${data.contact.email}
+Phone       : ${data.contact.phone}
+Service     : ${data.service.name}
+Source      : ${data.service.source}
+Meeting Link: ${data.appointment.meeting_id}
+Location    : ${data.appointment.location}
+\`\`\``;
+}
+
+/**
+ * ============================================================================
+ * Notification #6 - New Audit Appointment
+ * ============================================================================
+ */
+function newAuditAppointment(data) {
+  const appointment = formatAppointmentMountainTime(data.appointment.date);
+
+  return `Hi <@${data.owner.slack_user}>, <@${CONFIG.SLACK.ALEX_ID}>, <@${CONFIG.SLACK.DANIEL_ID}> 👋
+
+\`\`\`
+📅 NEW AUDIT APPOINTMENT BOOKED
+
+Appointment : ${appointment.date} (MDT)
+Time        : ${appointment.time}
+Name        : ${data.contact.name}
+Email       : ${data.contact.email}
+Phone       : ${data.contact.phone}
+Source      : ${data.service.source}
+Meeting Link: ${data.appointment.meeting_id}
+Location    : ${data.appointment.location}
+\`\`\``;
+}
+
+/**
+ * ============================================================================
+ * Notification #7 - New SAB Appointment
+ * ============================================================================
+ */
+function newSABAppointment(data) {
+  const appointment = formatAppointmentMountainTime(data.appointment.date);
+
+  return `Hi <@${data.owner.slack_user}>, <@${CONFIG.SLACK.ALEX_ID}>, <@${CONFIG.SLACK.DANIEL_ID}>
+
+\`\`\`
+📅 NEW SAB APPOINTMENT BOOKED
+
+Appointment : ${appointment.date} (MDT)
+Time        : ${appointment.time}
+Name        : ${data.contact.name}
+Email       : ${data.contact.email}
+Phone       : ${data.contact.phone}
+Source      : ${data.service.source}
+Meeting Link: ${data.appointment.meeting_id}
+Location    : ${data.appointment.location}
+\`\`\``;
 }
 
 /**
@@ -48,19 +101,9 @@ function oneDayReminder(data, priorityUserId = null) {
   const appointment = formatAppointmentMountainTime(data.appointment.date);
   const serviceLine = data.service?.name ? `\n\t• Service: ${data.service.name}` : "";
 
-  return `Hi <@${userId}> :wave:
+  return `Hi <@${userId}> 👋
 
-:alarm_clock: *Appointment Reminder*
-
-Your appointment starts in *24 hours*.
-
-\t• Appointment: ${appointment.date} (MDT)
-\t• Time: ${appointment.time}
-\t• Name: ${data.contact.name}
-\t• Email: ${data.contact.email}
-\t• Phone: ${data.contact.phone}${serviceLine}
-\t• Meeting Link: ${data.appointment.meeting_id}
-\t• Location: ${data.appointment.location}`;
+Just a reminder that tomorrow you have a meeting with *${data.contact.name}* at *${appointment.time} MDT*.${serviceLine}`;
 }
 
 /**
@@ -71,19 +114,23 @@ Your appointment starts in *24 hours*.
 function oneHourReminder(data, priorityUserId = null) {
   const userId = priorityUserId || data.owner.slack_user;
   const appointment = formatAppointmentMountainTime(data.appointment.date);
-  const serviceLine = data.service?.name ? `\n\t• Service: ${data.service.name}` : "";
+  const serviceLine = data.service?.name ? `Service     : ${data.service.name}\n` : "";
 
-  return `Hi <@${userId}> :wave:
+  return `Hi <@${userId}> 👋
 
-:alarm_clock: *Appointment Reminder*
+🚨 *APPOINTMENT STARTING SOON*
 
-Your appointment starts in *1 hour*.
+Your appointment starts in *1 hour*. Good luck!
 
-\t• Time: ${appointment.time}
-\t• Name: ${data.contact.name}
-\t• Email: ${data.contact.email}${serviceLine}
-\t• Meeting: ${data.appointment.meeting_id}
-\t• Location: ${data.appointment.location}`;
+\`\`\`
+Time        : ${appointment.time}
+Name        : ${data.contact.name}
+Email       : ${data.contact.email}
+${serviceLine}Meeting     : ${data.appointment.meeting_id}
+Location    : ${data.appointment.location}
+\`\`\`
+
+Please join the meeting now.`;
 }
 
 /**
@@ -94,19 +141,21 @@ Your appointment starts in *1 hour*.
 function fiveMinuteReminder(data, priorityUserId = null) {
   const userId = priorityUserId || data.owner.slack_user;
   const appointment = formatAppointmentMountainTime(data.appointment.date);
-  const serviceLine = data.service?.name ? `\n\t• Service: ${data.service.name}` : "";
+  const serviceLine = data.service?.name ? `Service     : ${data.service.name}\n` : "";
 
-  return `Hi <@${userId}> :wave:
+  return `Hi <@${userId}> 👋
 
-:rotating_light: *Appointment Starting Soon*
+🚨 *APPOINTMENT STARTING SOON*
 
 Your appointment starts in *5 minutes*. Good luck!
 
-\t• Time: ${appointment.time}
-\t• Name: ${data.contact.name}
-\t• Email: ${data.contact.email}${serviceLine}
-\t• Meeting: ${data.appointment.meeting_id}
-\t• Location: ${data.appointment.location}
+\`\`\`
+Time        : ${appointment.time}
+Name        : ${data.contact.name}
+Email       : ${data.contact.email}
+${serviceLine}Meeting     : ${data.appointment.meeting_id}
+Location    : ${data.appointment.location}
+\`\`\`
 
 Please join the meeting now.`;
 }
@@ -130,25 +179,126 @@ function newSubscription(data, priorityUserId = null) {
 
 /**
  * ============================================================================
- * Notification #6 - New Audit Appointment
+ * Notification #8 - Appointment Rescheduled
  * ============================================================================
  */
-function newAuditAppointment(data) {
+function rescheduledAppointment(data) {
   const appointment = formatAppointmentMountainTime(data.appointment.date);
 
-  return `Hi <@${data.owner.slack_user}>, <@${CONFIG.SLACK.ALEX_ID}>, <@${CONFIG.SLACK.DANIEL_ID}> :wave:
+  return `Hi <@${data.owner.slack_user}>, <@${CONFIG.SLACK.ALEX_ID}>, <@${CONFIG.SLACK.DANIEL_ID}> 👋
 
-:calendar: *New Audit Appointment Booked!*
+\`\`\`
+🔄 APPOINTMENT RESCHEDULED
 
-\t• Appointment: ${appointment.date} (MDT)
-\t• Time: ${appointment.time}
-\t• Name: ${data.contact.name}
-\t• Email: ${data.contact.email}
-\t• Phone: ${data.contact.phone}
-\t• Source: ${data.service.source}
-\t• Meeting Link: ${data.appointment.meeting_id}
-\t• Location: ${data.appointment.location}`;
+New Date    : ${appointment.date} (MDT)
+New Time    : ${appointment.time}
+Name        : ${data.contact.name}
+Email       : ${data.contact.email}
+Phone       : ${data.contact.phone}
+Service     : ${data.service.name}
+Source      : ${data.service.source}
+Meeting Link: ${data.appointment.meeting_id}
+Location    : ${data.appointment.location}
+\`\`\``;
 }
+
+function rescheduledAppointmentDM(data) {
+  const appointment = formatAppointmentMountainTime(data.appointment.date);
+
+  return `Hi <@${CONFIG.SLACK.MELISSA_ID}> 👋
+
+\`\`\`
+🔄 RESCHEDULE ALERT
+
+Name : ${data.contact.name}
+Email: ${data.contact.email}
+New  : ${appointment.date} @ ${appointment.time} (MDT)
+\`\`\``;
+}
+
+/**
+ * ============================================================================
+ * Notification #9 - Appointment Cancelled (Not Confirmed)
+ * ============================================================================
+ */
+function cancelledAppointmentDM(data) {
+  return `Hi <@${CONFIG.SLACK.MELISSA_ID}> 👋
+  
+❌ APPOINTMENT CANCELLED - NOT CONFIRMED
+\`\`\`
+Name : ${data.contact.name}
+Email: ${data.contact.email}
+Note : Client hasn't confirmed attendance, appointment cancelled.
+       Follow up for rescheduling is already sent
+\`\`\``;
+}
+
+/**
+ * ============================================================================
+ * Short Lead DM (Newsletter / Audit) - sent to Melissa alongside channel post
+ * ============================================================================
+ */
+function newLeadShortDM(data) {
+  const name = data.name || data.contact?.name || "N/A";
+
+  return `Hi <@${CONFIG.SLACK.MELISSA_ID}> 👋
+
+\`\`\`
+ New Lead: ${name}
+ Source: ${data.contact.source}
+\`\`\``;
+}
+
+function appointmentDetailsThread(data) {
+  const appointment = formatAppointmentMountainTime(data.appointment.date);
+
+  const contactInfo = [
+    clean(data.contact.name) && `• Name: ${clean(data.contact.name)}`,
+    clean(data.contact.email) && `• Email: ${clean(data.contact.email)}`,
+    data.contact.phone && `• Phone: ${phoneCell(data.contact.phone)}`
+  ].filter(Boolean);
+
+  const appointmentInfo = [
+    appointment.date && `• Date: ${appointment.date}`,
+    appointment.time && `• Time: ${appointment.time}`,
+    clean(data.appointment.meeting_id) && `• Meeting ID: ${clean(data.appointment.meeting_id)}`,
+    clean(data.appointment.location) && `• Location: ${clean(data.appointment.location)}`
+  ].filter(Boolean);
+
+  const publishingInfo = [
+    clean(data.contact.book_progress) && `• Book Progress: ${clean(data.contact.book_progress)}`,
+    clean(data.contact.service_interested) && `• Service Interested: ${clean(data.contact.service_interested)}`
+  ].filter(Boolean);
+
+  const businessInfo = [
+    clean(data.contact.monthly_budget) && `• Monthly Budget: ${clean(data.contact.monthly_budget)}`,
+    clean(data.contact.annual_revenue) && `• Annual Revenue: ${clean(data.contact.annual_revenue)}`,
+    clean(data.contact.source) && `• Source: ${clean(data.contact.source)}`
+  ].filter(Boolean);
+
+  const sections = [
+    contactInfo.length
+      ? `👤 *Contact Information*\n${contactInfo.join("\n")}`
+      : null,
+
+    appointmentInfo.length
+      ? `📅 *Appointment Information*\n${appointmentInfo.join("\n")}`
+      : null,
+
+    publishingInfo.length
+      ? `📚 *Publishing Information*\n${publishingInfo.join("\n")}`
+      : null,
+
+    businessInfo.length
+      ? `💰 *Business Information*\n${businessInfo.join("\n")}`
+      : null
+  ].filter(Boolean);
+
+  return `📋 *Appointment Details*
+
+${sections.join("\n\n")}`;
+}
+
 
 /**
  * ============================================================================
@@ -159,13 +309,34 @@ function sendSlackMessage(data, type, channelId = null, userIds = []) {
   if (!data) throw new Error("Slack message data is required.");
 
   // Channel notifications use one shared message.
-  if (type === 1 || type === 5 || type === 6) {
-    if (!channelId) throw new Error("Slack channel ID is required for type 1 or 5.");
+  if (type === 1 || type === 5 || type === 6 || type === 7 || type === 8) {
+    if (!channelId) throw new Error("Slack channel ID is required for type 1, 5, 6, 7, or 8.");
 
     const message = buildSlackMessage(type, data);
     logToSheet(type, data);
     logOverallRow(data)
-    return sendSlackApiMessage(channelId, message, CONFIG.SLACK.BOT_TOKEN);
+
+    const result = sendSlackApiMessage(channelId, message, CONFIG.SLACK.BOT_TOKEN);
+
+    // For new appointment / new audit / SAB / reschedule, follow up with full details in-thread.
+    if (type === 1 || type === 6 || type === 7 || type === 8) {
+      const threadMessage = appointmentDetailsThread(data);
+      sendSlackThreadMessage(channelId, result.ts, threadMessage);
+    }
+
+    // Reschedule: also give Melissa a short heads-up DM.
+    if (type === 8) {
+      const dmChannelId = openSlackDM(CONFIG.SLACK.MELISSA_ID, CONFIG.SLACK.USER_TOKEN);
+      sendSlackApiMessage(dmChannelId, rescheduledAppointmentDM(data), CONFIG.SLACK.USER_TOKEN);
+    }
+
+    // Newsletter / audit leads: also give Melissa a short heads-up DM.
+    if (type === 5 || type === 6) {
+      const dmChannelId = openSlackDM(CONFIG.SLACK.MELISSA_ID, CONFIG.SLACK.USER_TOKEN);
+      sendSlackApiMessage(dmChannelId, newLeadShortDM(data), CONFIG.SLACK.USER_TOKEN);
+    }
+
+    return result;
   }
 
   // DM notifications build a personalized message for each user.
@@ -175,7 +346,15 @@ function sendSlackMessage(data, type, channelId = null, userIds = []) {
     const message = buildSlackMessage(type, data, userId);
     const dmChannelId = openSlackDM(userId, CONFIG.SLACK.USER_TOKEN);
 
-    return sendSlackApiMessage(dmChannelId, message, CONFIG.SLACK.USER_TOKEN);
+    const result = sendSlackApiMessage(dmChannelId, message, CONFIG.SLACK.USER_TOKEN);
+
+    // For 1-day and 1-hour reminders, follow up with the full appointment details in the DM thread.
+    if (type === 2 || type === 3) {
+      const threadMessage = appointmentDetailsThread(data);
+      sendSlackThreadMessage(dmChannelId, result.ts, threadMessage);
+    }
+
+    return result;
   });
 }
 
@@ -194,20 +373,31 @@ function openSlackDM(userId, token) {
 }
 
 /**
+ * Send the Appointment Thread Message Thread
+ */
+function sendSlackThreadMessage(channelId, parentTs, message) {
+  return sendSlackApiMessage(
+    channelId,
+    message,
+    CONFIG.SLACK.BOT_TOKEN,
+    parentTs
+  );
+}
+
+/**
  * ============================================================================
  * Sends a message to a Slack channel or DM.
  * ============================================================================
  */
-function sendSlackApiMessage(channelId, message, token) {
+function sendSlackApiMessage(channelId, message, token, threadTs = null) {
   const payload = {
     channel: channelId,
     text: message
   };
 
-  saveResponse(payload);
+  if (threadTs) payload.thread_ts = threadTs;
 
   const result = slackApiRequest(CONFIG.SLACK.API_URL, payload, token);
-  saveSlackResponse(result);
 
   if (!result.ok) throw new Error(`Failed to send Slack message: ${JSON.stringify(result)}`);
 
@@ -235,15 +425,15 @@ function slackApiRequest(url, payload, token) {
 }
 
 function formatAppointmentMountainTime(dateTime) {
-  const date = new Date(dateTime);
+    const date = new Date(dateTime);
 
-  if (isNaN(date.getTime())) throw new Error(`Invalid appointment date: ${dateTime}`);
+    if (isNaN(date.getTime())) throw new Error(`Invalid appointment date: ${dateTime}`);
 
-  // Add 1 hour before formatting.
-  date.setTime(date.getTime() + (60 * 60 * 1000));
+    // Add 1 day and 1 hour before formatting.
+    date.setTime(date.getTime() + (25 * 60 * 60 * 1000));
 
-  return {
-    date: Utilities.formatDate(date, "America/Denver", "MMM dd, yyyy"),
-    time: Utilities.formatDate(date, "America/Denver", "h:mm a z")
-  };
+    return {
+        date: Utilities.formatDate(date, "America/Denver", "MMM dd, yyyy"),
+        time: Utilities.formatDate(date, "America/Denver", "h:mm a z")
+    };
 }

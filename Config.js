@@ -21,6 +21,7 @@ const CONFIG = Object.freeze({
     CONSULTATION_TAB: 340209372,
     AUDIT_TAB: 1475914192,
     NEWSLETTER_TAB: 1116973688,
+    SAB_TAB: 442087388,
     OVERALL_TAB: 0,
     OVERALL_HEADERS: [
       "Contact Name",
@@ -56,9 +57,17 @@ const CONFIG = Object.freeze({
     AUDIT_HEADERS: [
       "Name",
       "Email",
+      "Phone",
       "Source",
       "Amazon Link",
-      "Date (MDT)"
+      "Date Created (MDT)"
+    ],
+    SAB_HEADERS: [
+      "Name",
+      "Email",
+      "Phone",
+      "Source",
+      "Date Created (MDT)"
     ],
     APPOINTMENT_HEADERS: [
       "Contact Name",

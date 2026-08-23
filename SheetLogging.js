@@ -73,6 +73,10 @@ function logToSheet(type, data) {
       }
       break;
 
+    case 7: // New SAB Appointment
+      logSABRow(workbookId, data);
+      break;
+
     default:
       return;
   }
@@ -115,6 +119,35 @@ function logAppointmentRow(workbookId, data) {
   sheet.appendRow(row);
 }
 
+
+/**
+ * ============================================================================
+ * SAB sheet (Set Appointment Booking)
+ * ============================================================================
+ */
+function logSABRow(workbookId, data) {
+  const ss = SpreadsheetApp.openById(workbookId);
+  const sheetId = Number(CONFIG.SHEETS.SAB_TAB);
+  const headers = CONFIG.SHEETS.SAB_HEADERS;
+
+  ensureHeaderExists(workbookId, sheetId, headers);
+
+  const sheet = ss.getSheetById(sheetId);
+  if (!sheet) throw new Error(`Sheet with ID ${sheetId} not found.`);
+
+  const currentDate = formatAppointmentMountainTime(new Date().toISOString());
+
+  const row = [
+    clean(data.name || data.contact?.name),
+    clean(data.email || data.contact?.email),
+    phoneCell(data.phone || data.contact?.phone),
+    clean(data.source || data.contact?.source),
+    currentDate.date
+  ];
+
+  sheet.appendRow(row);
+}
+
 /**
  * ============================================================================
  * Consultation sheet
@@ -124,7 +157,7 @@ function logConsultationRow(workbookId, data) {
   const ss = SpreadsheetApp.openById(workbookId);
   const sheetId = Number(CONFIG.SHEETS.CONSULTATION_TAB);
   const headers = CONFIG.SHEETS.CONSULTATION_HEADERS;
-
+  const currentDate = formatAppointmentMountainTime(new Date().toISOString());
   ensureHeaderExists(workbookId, sheetId, headers);
 
   const sheet = ss.getSheetById(sheetId);
@@ -138,7 +171,8 @@ function logConsultationRow(workbookId, data) {
     clean(data.contact.service_interested),
     clean(data.contact.monthly_budget),
     clean(data.contact.annual_revenue),
-    clean(data.contact.source)
+    clean(data.contact.source),
+    currentDate.date
   ];
 
   sheet.appendRow(row);
