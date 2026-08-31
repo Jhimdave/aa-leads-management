@@ -33,7 +33,7 @@ function doPost(e) {
       case 5:
         sendSlackMessage(request, notif, channelId);
         break;
-      
+
       case 6:
         sendSlackMessage(request, notif, channelId);
         break;
@@ -47,6 +47,10 @@ function doPost(e) {
         break;
 
       case 9:
+        sendSlackMessage(request, notif, null, [melissa]);
+        break;
+
+      case 10:
         sendSlackMessage(request, notif, null, [melissa]);
         break;
 

@@ -14,6 +14,7 @@ function buildSlackMessage(type, data, priorityUserId = null) {
     case 7: return newSABAppointment(data);
     case 8: return rescheduledAppointment(data);
     case 9: return cancelledAppointmentDM(data);
+    case 10: return approvalReminder(data)
     default: throw new Error(`Unknown notification type: ${type}`);
   }
 }
@@ -208,7 +209,7 @@ function rescheduledAppointmentDM(data) {
   return `Hi <@${CONFIG.SLACK.MELISSA_ID}> 👋
 
 \`\`\`
-🔄 RESCHEDULE ALERT
+RESCHEDULE ALERT
 
 Name : ${data.contact.name}
 Email: ${data.contact.email}
@@ -223,14 +224,28 @@ New  : ${appointment.date} @ ${appointment.time} (MDT)
  */
 function cancelledAppointmentDM(data) {
   return `Hi <@${CONFIG.SLACK.MELISSA_ID}> 👋
-  
-❌ APPOINTMENT CANCELLED - NOT CONFIRMED
+ 
 \`\`\`
+APPOINTMENT CANCELLED - NOT CONFIRMED
+
 Name : ${data.contact.name}
 Email: ${data.contact.email}
 Note : Client hasn't confirmed attendance, appointment cancelled.
        Follow up for rescheduling is already sent
 \`\`\``;
+}
+
+/**
+ * ============================================================================
+ * Notification #2 - Appointment Approval Reminder
+ * ============================================================================
+ */
+function approvalReminder(data) {
+  const appointment = formatAppointmentMountainTime(data.appointment.date);
+
+  return `🔔 Appointment Approval
+
+The client ${data.contact.name} has approved the appointment scheduled for today at ${appointment.time} MDT.`;
 }
 
 /**
@@ -250,55 +265,67 @@ function newLeadShortDM(data) {
 }
 
 function appointmentDetailsThread(data) {
-  const appointment = formatAppointmentMountainTime(data.appointment.date);
+  const appointment = data.appointment ? formatAppointmentMountainTime(data.appointment.date) : null;
 
   const contactInfo = [
-    clean(data.contact.name) && `• Name: ${clean(data.contact.name)}`,
-    clean(data.contact.email) && `• Email: ${clean(data.contact.email)}`,
-    data.contact.phone && `• Phone: ${phoneCell(data.contact.phone)}`
+    clean(data.contact?.name || data.name) && `Name        : ${clean(data.contact?.name || data.name)}`,
+    clean(data.contact?.email || data.email) && `Email       : ${clean(data.contact?.email || data.email)}`,
+    data.contact?.phone && `Phone       : ${phoneCell(data.contact.phone)}`
   ].filter(Boolean);
 
-  const appointmentInfo = [
-    appointment.date && `• Date: ${appointment.date}`,
-    appointment.time && `• Time: ${appointment.time}`,
-    clean(data.appointment.meeting_id) && `• Meeting ID: ${clean(data.appointment.meeting_id)}`,
-    clean(data.appointment.location) && `• Location: ${clean(data.appointment.location)}`
-  ].filter(Boolean);
+  const appointmentInfo = appointment ? [
+    `Date        : ${appointment.date}`,
+    `Time        : ${appointment.time}`,
+    clean(data.appointment.meeting_id) && `Meeting ID  : ${clean(data.appointment.meeting_id)}`,
+    clean(data.appointment.location) && `Location    : ${clean(data.appointment.location)}`
+  ].filter(Boolean) : [];
 
   const publishingInfo = [
-    clean(data.contact.book_progress) && `• Book Progress: ${clean(data.contact.book_progress)}`,
-    clean(data.contact.service_interested) && `• Service Interested: ${clean(data.contact.service_interested)}`
+    clean(data.contact?.book_progress) && `Book Progress      : ${clean(data.contact.book_progress)}`,
+    clean(data.contact?.service_interested) && `Service Interested : ${clean(data.contact.service_interested)}`
   ].filter(Boolean);
 
   const businessInfo = [
-    clean(data.contact.monthly_budget) && `• Monthly Budget: ${clean(data.contact.monthly_budget)}`,
-    clean(data.contact.annual_revenue) && `• Annual Revenue: ${clean(data.contact.annual_revenue)}`,
-    clean(data.contact.source) && `• Source: ${clean(data.contact.source)}`
+    clean(data.contact?.monthly_budget) && `Monthly Budget: ${clean(data.contact.monthly_budget)}`,
+    clean(data.contact?.annual_revenue) && `Annual Revenue: ${clean(data.contact.annual_revenue)}`,
+    clean(data.contact?.source || data.source) && `Source        : ${clean(data.contact?.source || data.source)}`
   ].filter(Boolean);
 
   const sections = [
-    contactInfo.length
-      ? `👤 *Contact Information*\n${contactInfo.join("\n")}`
-      : null,
-
-    appointmentInfo.length
-      ? `📅 *Appointment Information*\n${appointmentInfo.join("\n")}`
-      : null,
-
-    publishingInfo.length
-      ? `📚 *Publishing Information*\n${publishingInfo.join("\n")}`
-      : null,
-
-    businessInfo.length
-      ? `💰 *Business Information*\n${businessInfo.join("\n")}`
-      : null
+    contactInfo.length ? contactInfo.join("\n") : null,
+    appointmentInfo.length ? appointmentInfo.join("\n") : null,
+    publishingInfo.length ? publishingInfo.join("\n") : null,
+    businessInfo.length ? businessInfo.join("\n") : null
   ].filter(Boolean);
 
-  return `📋 *Appointment Details*
+  return `Details
 
-${sections.join("\n\n")}`;
+\`\`\`
+${sections.join("\n\n")}
+\`\`\``;
 }
 
+
+function shortMelissaDM(type, data) {
+  const LABELS = {
+    1: "New Appointment",
+    5: "New Lead",
+    6: "New Audit Appointment",
+    7: "New SAB Appointment"
+  };
+
+  const label = LABELS[type] || "New Notification";
+  const name = data.contact?.name || data.name || "N/A";
+  const source = data.contact?.source || data.source || data.service?.source || "N/A";
+
+  return `Hi <@${CONFIG.SLACK.MELISSA_ID}> 👋
+
+\`\`\`
+${label}
+Name  : ${name}
+Source: ${source}
+\`\`\``;
+}
 
 /**
  * ============================================================================
@@ -324,17 +351,12 @@ function sendSlackMessage(data, type, channelId = null, userIds = []) {
       sendSlackThreadMessage(channelId, result.ts, threadMessage);
     }
 
-    // Reschedule: also give Melissa a short heads-up DM.
-    if (type === 8) {
-      const dmChannelId = openSlackDM(CONFIG.SLACK.MELISSA_ID, CONFIG.SLACK.USER_TOKEN);
-      sendSlackApiMessage(dmChannelId, rescheduledAppointmentDM(data), CONFIG.SLACK.USER_TOKEN);
-    }
-
-    // Newsletter / audit leads: also give Melissa a short heads-up DM.
-    if (type === 5 || type === 6) {
-      const dmChannelId = openSlackDM(CONFIG.SLACK.MELISSA_ID, CONFIG.SLACK.USER_TOKEN);
-      sendSlackApiMessage(dmChannelId, newLeadShortDM(data), CONFIG.SLACK.USER_TOKEN);
-    }
+    // Every channel broadcast also gets a short heads-up DM to Melissa,
+    // followed by the full details threaded underneath.
+    const dmChannelId = openSlackDM(CONFIG.SLACK.MELISSA_ID, CONFIG.SLACK.USER_TOKEN);
+    const dmMessage = type === 8 ? rescheduledAppointmentDM(data) : shortMelissaDM(type, data);
+    const dmResult = sendSlackApiMessage(dmChannelId, dmMessage, CONFIG.SLACK.USER_TOKEN);
+    sendSlackThreadMessage(dmChannelId, dmResult.ts, appointmentDetailsThread(data));
 
     return result;
   }
