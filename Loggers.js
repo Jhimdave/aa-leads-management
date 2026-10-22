@@ -100,10 +100,9 @@ function deleteBotMessagesForSpecificDates() {
   const token = CONFIG.SLACK.BOT_TOKEN;
 
   const targetDates = new Set([
-    "2026-08-17",
-    "2026-08-05",
-    "2026-08-04",
-    "2026-07-26"
+    "2026-09-04",
+    "2026-09-03"
+
   ]);
 
   let cursor = "";
@@ -442,6 +441,157 @@ function updateSlackMessage(channelId, ts, text, token) {
       }),
       muteHttpExceptions: true
     }
+  );
+
+  return JSON.parse(response.getContentText());
+}
+
+/**
+ * ============================================================================
+ * Delete today's bot messages
+ *
+ * Deletes:
+ * 1. Bot parent messages posted today
+ * 2. Bot thread replies belonging to those messages
+ *
+ * Does NOT delete:
+ * - Human messages
+ * - Bot messages from previous days
+ * - Messages in other channels
+ * ============================================================================
+ */
+function deleteTodaysBotMessages() {
+  const channelId = CONFIG.SLACK.CHANNEL_ID;
+  const token = CONFIG.SLACK.BOT_TOKEN;
+
+  const today = Utilities.formatDate(
+    new Date(),
+    Session.getScriptTimeZone(),
+    "yyyy-MM-dd"
+  );
+
+  let cursor = "";
+  let deleted = 0;
+
+  do {
+    const history = getSlackChannelHistory(channelId, token, cursor);
+
+    if (!history.ok) {
+      throw new Error(
+        `Failed to get channel history: ${JSON.stringify(history)}`
+      );
+    }
+
+    const botMessages = history.messages.filter(message => {
+      if (!message.bot_id) return false;
+
+      const messageDate = Utilities.formatDate(
+        new Date(parseFloat(message.ts) * 1000),
+        Session.getScriptTimeZone(),
+        "yyyy-MM-dd"
+      );
+
+      return messageDate === today;
+    });
+
+    botMessages.forEach(message => {
+      try {
+
+        // ------------------------------------------------------------
+        // 1. Delete thread replies first
+        // ------------------------------------------------------------
+        if (message.reply_count > 0) {
+          const replies = getSlackThreadReplies(
+            channelId,
+            message.ts,
+            token
+          );
+
+          if (replies.ok && Array.isArray(replies.messages)) {
+            replies.messages
+              .filter(reply => reply.ts !== message.ts)
+              .forEach(reply => {
+
+                const result = deleteSlackMessage(
+                  channelId,
+                  reply.ts,
+                  token
+                );
+
+                if (result.ok) {
+                  deleted++;
+                  console.log(
+                    `Deleted thread reply: ${reply.ts}`
+                  );
+                } else {
+                  console.error(
+                    `Failed to delete thread reply ${reply.ts}: ` +
+                    JSON.stringify(result)
+                  );
+                }
+
+                Utilities.sleep(500);
+              });
+          }
+        }
+
+        // ------------------------------------------------------------
+        // 2. Delete parent bot message
+        // ------------------------------------------------------------
+        const result = deleteSlackMessage(
+          channelId,
+          message.ts,
+          token
+        );
+
+        if (result.ok) {
+          deleted++;
+          console.log(
+            `Deleted parent message: ${message.ts}`
+          );
+        } else {
+          console.error(
+            `Failed to delete parent ${message.ts}: ` +
+            JSON.stringify(result)
+          );
+        }
+
+        Utilities.sleep(500);
+
+      } catch (error) {
+        console.error(
+          `Error deleting ${message.ts}: ${error.message}`
+        );
+      }
+    });
+
+    cursor = history.response_metadata?.next_cursor || "";
+
+  } while (cursor);
+
+  console.log(
+    `Finished. Deleted ${deleted} bot messages/replies from ${today}.`
+  );
+
+  return deleted;
+}
+
+function getSlackThreadReplies(channelId, threadTs, token) {
+  const url = "https://slack.com/api/conversations.replies";
+
+  const options = {
+    method: "get",
+    headers: {
+      Authorization: "Bearer " + token
+    },
+    muteHttpExceptions: true
+  };
+
+  const response = UrlFetchApp.fetch(
+    url +
+      "?channel=" + encodeURIComponent(channelId) +
+      "&ts=" + encodeURIComponent(threadTs),
+    options
   );
 
   return JSON.parse(response.getContentText());

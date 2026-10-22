@@ -77,6 +77,14 @@ function logToSheet(type, data) {
       logSABRow(workbookId, data);
       break;
 
+    case 11: // New Interview Appointment
+      logInterviewRow(workbookId, data);
+      break;
+
+    case 12: // New Legacy Author Appointment
+      logLegacyAuthorRow(workbookId, data);
+      break;
+
     default:
       return;
   }
@@ -264,6 +272,72 @@ function logOverallRow(data) {
     clean(data.contact.status) || "New Lead",
     currentDate.date,
     clean(data.notes)
+  ];
+
+  sheet.appendRow(row);
+}
+
+/**
+ * ============================================================================
+ * Interview Leads sheet
+ * ============================================================================
+ */
+function logInterviewRow(workbookId, data) {
+  const ss = SpreadsheetApp.openById(workbookId);
+  const sheetId = Number(CONFIG.SHEETS.INTERVIEW_TAB);
+  const headers = CONFIG.SHEETS.INTERVIEW_HEADERS;
+
+  ensureHeaderExists(workbookId, sheetId, headers);
+
+  const sheet = ss.getSheetById(sheetId);
+  if (!sheet) throw new Error(`Sheet with ID ${sheetId} not found.`);
+
+  const appointment = formatAppointmentMountainTime(data.appointment.date);
+  const currentDate = formatAppointmentMountainTime(new Date().toISOString());
+
+  const row = [
+    clean(data.contact?.name || data.name),
+    clean(data.contact?.email || data.email),
+    phoneCell(data.contact?.phone || data.phone),
+    appointment.date,
+    appointment.time,
+    clean(data.appointment?.meeting_id),
+    clean(data.appointment?.location),
+    clean(data.service?.source || data.source),
+    currentDate.date
+  ];
+
+  sheet.appendRow(row);
+}
+
+/**
+ * ============================================================================
+ * Legacy Author sheet
+ * ============================================================================
+ */
+function logLegacyAuthorRow(workbookId, data) {
+  const ss = SpreadsheetApp.openById(workbookId);
+  const sheetId = Number(CONFIG.SHEETS.LEGACY_AUTHOR_TAB);
+  const headers = CONFIG.SHEETS.LEGACY_AUTHOR_HEADERS;
+
+  ensureHeaderExists(workbookId, sheetId, headers);
+
+  const sheet = ss.getSheetById(sheetId);
+  if (!sheet) throw new Error(`Sheet with ID ${sheetId} not found.`);
+
+  const appointment = formatAppointmentMountainTime(data.appointment.date);
+  const currentDate = formatAppointmentMountainTime(new Date().toISOString());
+
+  const row = [
+    clean(data.contact?.name || data.name),
+    clean(data.contact?.email || data.email),
+    phoneCell(data.contact?.phone || data.phone),
+    appointment.date,
+    appointment.time,
+    clean(data.appointment?.meeting_id),
+    clean(data.appointment?.location),
+    clean(data.service?.source || data.source),
+    currentDate.date
   ];
 
   sheet.appendRow(row);

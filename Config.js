@@ -3,25 +3,28 @@
  */
 
 const CONFIG = Object.freeze({
-
   SLACK: {
-
     API_URL: "https://slack.com/api/chat.postMessage",
     BOT_TOKEN: PropertiesService.getScriptProperties().getProperty("BOT_TOKEN"),
-    USER_TOKEN: PropertiesService.getScriptProperties().getProperty("USER_TOKEN"),
+    USER_TOKEN:
+      PropertiesService.getScriptProperties().getProperty("USER_TOKEN"),
     CHANNEL_ID: "C0BJFE50U78",
     DANIEL_ID: "U07FYH8BWTS",
     ALEX_ID: "U06S2EM3AF8",
-    MELISSA_ID: "U06SXSA4NCQ"
+    MELISSA_ID: "U06SXSA4NCQ",
+    JIM_ID: "U08Q4T74NCU",
   },
 
-  SHEETS : {
-    SPREADSHEET_ID: PropertiesService.getScriptProperties().getProperty("SPREADSHEET_ID"),
+  SHEETS: {
+    SPREADSHEET_ID:
+      PropertiesService.getScriptProperties().getProperty("SPREADSHEET_ID"),
     APPOINTMENTS_TAB: 653050749,
     CONSULTATION_TAB: 340209372,
     AUDIT_TAB: 1475914192,
     NEWSLETTER_TAB: 1116973688,
     SAB_TAB: 442087388,
+    INTERVIEW_TAB: 663060779,
+    LEGACY_AUTHOR_TAB: 390456692,
     OVERALL_TAB: 0,
     OVERALL_HEADERS: [
       "Contact Name",
@@ -35,7 +38,7 @@ const CONFIG = Object.freeze({
       "Amazon Link",
       "Status",
       "Date Created (MDT)",
-      "Notes"
+      "Notes",
     ],
     CONSULTATION_HEADERS: [
       "Contact Name",
@@ -48,27 +51,16 @@ const CONFIG = Object.freeze({
       "Source",
       "Date Created (MDT)",
     ],
-    NEWSLETTER_HEADERS: [
-      "Name",
-      "Email",
-      "Source",
-      "Date (MDT)"
-    ],
+    NEWSLETTER_HEADERS: ["Name", "Email", "Source", "Date (MDT)"],
     AUDIT_HEADERS: [
       "Name",
       "Email",
       "Phone",
       "Source",
       "Amazon Link",
-      "Date Created (MDT)"
+      "Date Created (MDT)",
     ],
-    SAB_HEADERS: [
-      "Name",
-      "Email",
-      "Phone",
-      "Source",
-      "Date Created (MDT)"
-    ],
+    SAB_HEADERS: ["Name", "Email", "Phone", "Source", "Date Created (MDT)"],
     APPOINTMENT_HEADERS: [
       "Contact Name",
       "Email",
@@ -82,13 +74,35 @@ const CONFIG = Object.freeze({
       "Monthly Budget",
       "Annual Revenue",
       "Source",
-      "Date Created (MDT)"
-    ]
+      "Date Created (MDT)",
+    ],
+    INTERVIEW_HEADERS: [
+      "Name",
+      "Email",
+      "Phone",
+      "Date",
+      "Time",
+      "Meeting ID",
+      "Location",
+      "Source",
+      "Date Created (MDT)",
+    ],
+
+    LEGACY_AUTHOR_HEADERS: [
+      "Name",
+      "Email",
+      "Phone",
+      "Date",
+      "Time",
+      "Meeting ID",
+      "Location",
+      "Source",
+      "Date Created (MDT)",
+    ],
   },
 
   DEBUG: true,
-  SAVE_LOGS: true
-
+  SAVE_LOGS: true,
 });
 
 /**

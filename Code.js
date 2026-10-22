@@ -3,7 +3,6 @@ function doPost(e) {
   const daniel = CONFIG.SLACK.DANIEL_ID;
   const alex = CONFIG.SLACK.ALEX_ID;
   const melissa = CONFIG.SLACK.MELISSA_ID;
-
   try {
     saveExecution();
 
@@ -23,11 +22,11 @@ function doPost(e) {
         break;
 
       case 3:
-        sendSlackMessage(request, notif, null, [melissa]);
+        sendSlackMessage(request, notif, null, [alex, daniel, melissa]);
         break;
 
       case 4:
-        sendSlackMessage(request, notif, null, [alex, melissa]);
+        sendSlackMessage(request, notif, null, [melissa]);
         break;
 
       case 5:
@@ -47,11 +46,19 @@ function doPost(e) {
         break;
 
       case 9:
-        sendSlackMessage(request, notif, null, [melissa]);
+        sendSlackMessage(request, notif, null, [alex, daniel, melissa]);
         break;
 
       case 10:
-        sendSlackMessage(request, notif, null, [melissa]);
+        sendSlackMessage(request, notif, null, [alex, daniel, melissa]);
+        break;
+
+      case 11:
+        sendSlackMessage(request, notif, channelId);
+        break;
+
+      case 12:
+        sendSlackMessage(request, notif, channelId);
         break;
 
       default:
@@ -61,15 +68,14 @@ function doPost(e) {
     return jsonResponse({
       success: true,
       message: "Notification sent.",
-      notification_type: notif
+      notification_type: notif,
     });
-
   } catch (error) {
     saveError(error);
 
     return jsonResponse({
       success: false,
-      error: error.message
+      error: error.message,
     });
   }
 }

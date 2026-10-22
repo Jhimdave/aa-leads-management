@@ -1,0 +1,24 @@
+# Project and editor metadata
+.git/**
+.gitignore
+.claspignore
+.idea/**
+.junie/**
+AGENTS.md
+
+# Documentation and planning
+README.md
+docs/**
+
+# Local-only configuration
+.clasp.json
+
+# Dependencies, generated output, and local environment files
+node_modules/**
+dist/**
+build/**
+coverage/**
+.env
+.env.*
+!.env.example
+*.log
